@@ -1,26 +1,37 @@
 services:
-  mongo:
+  database:
     image: mongo:7
-    container_name: base-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
 
-  api:
+  backend:
     build:
       context: ./backend/go
-    container_name: base-api
     restart: unless-stopped
     environment:
-      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_URI=mongodb://database:27017
       - MONGO_DB=base
       - MONGO_USERS_COLLECTION=users
     depends_on:
-      - mongo
+      - database
     ports:
       - "8080:8080"
+  frontend:
+    build:
+      context: ./frontend/svelte
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=http://backend:8080
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/svelte:/app
+      - /app/node_modules
 
 volumes:
   mongo_data:

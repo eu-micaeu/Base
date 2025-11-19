@@ -1,14 +1,13 @@
 package handlers
 
 import (
-    "encoding/json"
     "net/http"
     "strings"
     "time"
 
     "github.com/eu-micaeu/Base/backend/go/database"
     "github.com/eu-micaeu/Base/backend/go/models"
-    "github.com/go-chi/chi/v5"
+    "github.com/gin-gonic/gin"
     "golang.org/x/crypto/bcrypt"
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/bson/primitive"
@@ -22,40 +21,38 @@ func NewUserHandler(db *database.DB) *UserHandler {
     return &UserHandler{DB: db}
 }
 
-func (h *UserHandler) List(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) List(c *gin.Context) {
     var users []models.User
-    err := h.DB.FindAll(r.Context(), "users", bson.D{}, &users)
-    if err != nil {
-        http.Error(w, "failed to list users", http.StatusInternalServerError)
+    if err := h.DB.FindAll(c.Request.Context(), "users", bson.D{}, &users); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list users"})
         return
     }
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(users)
+    c.JSON(http.StatusOK, users)
 }
 
-func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) Create(c *gin.Context) {
     var payload struct {
         Name     string `json:"name"`
         Email    string `json:"email"`
         Password string `json:"password"`
     }
-    if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-        http.Error(w, "invalid JSON", http.StatusBadRequest)
+    if err := c.ShouldBindJSON(&payload); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
         return
     }
     payload.Name = strings.TrimSpace(payload.Name)
     payload.Email = strings.TrimSpace(strings.ToLower(payload.Email))
     if payload.Name == "" || payload.Email == "" || payload.Password == "" {
-        http.Error(w, "name, email and password are required", http.StatusBadRequest)
+        c.JSON(http.StatusBadRequest, gin.H{"error": "name, email and password are required"})
         return
     }
     if len(payload.Password) < 6 {
-        http.Error(w, "password must be at least 6 chars", http.StatusBadRequest)
+        c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at least 6 chars"})
         return
     }
     hash, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
     if err != nil {
-        http.Error(w, "failed to hash password", http.StatusInternalServerError)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
         return
     }
     u := models.User{
@@ -69,28 +66,24 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
     if u.CreatedAt.IsZero() {
         u.CreatedAt = time.Now().UTC()
     }
-    _, err = h.DB.InsertOne(r.Context(), "users", u)
-    if err != nil {
-        http.Error(w, "failed to create user", http.StatusInternalServerError)
+    if _, err = h.DB.InsertOne(c.Request.Context(), "users", u); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
         return
     }
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(u)
+    c.JSON(http.StatusCreated, u)
 }
 
-func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
-    idHex := chi.URLParam(r, "id")
+func (h *UserHandler) Get(c *gin.Context) {
+    idHex := c.Param("id")
     var u models.User
-    ok, err := h.DB.FindByID(r.Context(), "users", idHex, &u)
+    ok, err := h.DB.FindByID(c.Request.Context(), "users", idHex, &u)
     if err != nil {
-        http.Error(w, "failed to get user", http.StatusInternalServerError)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user"})
         return
     }
     if !ok {
-        http.NotFound(w, r)
+        c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
         return
     }
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(u)
+    c.JSON(http.StatusOK, u)
 }
