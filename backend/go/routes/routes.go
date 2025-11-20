@@ -14,19 +14,6 @@ import (
 // Router configura e retorna o engine do Gin
 func Router(db *database.DB) *gin.Engine {
     r := gin.New()
-    r.Use(gin.Logger())
-    r.Use(gin.Recovery())
-    r.Use(cors.New(cors.Config{
-        // Permite qualquer origem e adiciona cabeçalho corretamente sem precisar de redirect.
-        AllowAllOrigins:  true,
-        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-        ExposeHeaders:    []string{"Link"},
-        AllowCredentials: false,
-        MaxAge:           12 * time.Hour,
-    }))
-
-    // Health endpoint removido conforme solicitação
 
     uh := handlers.NewUserHandler(db)
 
@@ -35,15 +22,6 @@ func Router(db *database.DB) *gin.Engine {
         auth.Use(middlewares.CORSMiddleware())
         auth.POST("/register", uh.Register)
         auth.POST("/login", uh.Login)
-    }
-
-    users := r.Group("/users")
-    {
-        // Aplica middleware do pacote middlewares ao grupo /users
-        users.Use(middlewares.CORSMiddleware())
-        // Suporte a listagem e busca por id sem barra final
-        users.GET(":id", uh.Get)
-        users.POST("", uh.Create)
     }
 
     return r
