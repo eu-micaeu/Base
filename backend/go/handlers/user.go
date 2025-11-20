@@ -184,19 +184,9 @@ func (h *UserHandler) Login(c *gin.Context) {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
         return
     }
-    
-    // Definir cookie JWT
-    c.SetCookie(
-        "jwt", token,
-        60*60*72, // 72 horas
-        "/",      // path
-        "",       // domain (vazio = atual)
-        false,     // secure (true em produção)
-        true,      // httpOnly
-    )
-
     c.JSON(http.StatusOK, gin.H{
         "message": "login successful",
         "user": u,
+        "token": token,
     })
 }
