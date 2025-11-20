@@ -88,6 +88,19 @@ func (db *DB) FindByID(ctx context.Context, collection, idHex string, result int
     return true, nil
 }
 
+// FindOne decodifica em 'result' (ponteiro para struct) e retorna se encontrado
+func (db *DB) FindOne(ctx context.Context, collection string, filter interface{}, result interface{}) (bool, error) {
+    coll := db.db.Collection(collection)
+    err := coll.FindOne(ctx, filter).Decode(result)
+    if err == mongo.ErrNoDocuments {
+        return false, nil
+    }
+    if err != nil {
+        return false, err
+    }
+    return true, nil
+}
+
 
 // getenv retorna o valor da variável de ambiente ou um valor padrão se não estiver definida
 func getenv(key, def string) string {

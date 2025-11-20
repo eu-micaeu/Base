@@ -24,7 +24,7 @@ services:
       context: ./frontend/svelte
     restart: unless-stopped
     environment:
-      - VITE_API_URL=http://backend:8080
+      - VITE_API_URL=http://localhost:8080
     depends_on:
       - backend
     ports:

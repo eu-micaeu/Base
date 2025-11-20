@@ -8,6 +8,7 @@ import (
 
     "github.com/eu-micaeu/Base/backend/go/database"
     "github.com/eu-micaeu/Base/backend/go/handlers"
+    "github.com/eu-micaeu/Base/backend/go/middlewares"
 )
 
 // Router configura e retorna o engine do Gin
@@ -16,7 +17,8 @@ func Router(db *database.DB) *gin.Engine {
     r.Use(gin.Logger())
     r.Use(gin.Recovery())
     r.Use(cors.New(cors.Config{
-        AllowOrigins:     []string{"*"},
+        // Permite qualquer origem e adiciona cabeçalho corretamente sem precisar de redirect.
+        AllowAllOrigins:  true,
         AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
         AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
         ExposeHeaders:    []string{"Link"},
@@ -29,11 +31,22 @@ func Router(db *database.DB) *gin.Engine {
     })
 
     uh := handlers.NewUserHandler(db)
+
+    auth := r.Group("/auth")
+    {
+        auth.Use(middlewares.CORSMiddleware())
+        auth.POST("/register", uh.Register)
+        auth.POST("/login", uh.Login)
+    }
+
     users := r.Group("/users")
     {
-        users.GET("/", uh.List)
-        users.POST("/", uh.Create)
-        users.GET("/:id", uh.Get)
+        // Aplica middleware do pacote middlewares ao grupo /users
+        users.Use(middlewares.CORSMiddleware())
+        // Suporte a listagem e busca por id sem barra final
+        users.GET("", uh.List)
+        users.GET(":id", uh.Get)
+        users.POST("", uh.Create)
     }
 
     return r
