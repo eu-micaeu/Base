@@ -18,10 +18,6 @@ async function request(path, options = {}) {
     }
 }
 
-export async function getHealth() {
-    return request('/health');
-}
-
 export async function getUsers() {
     return request('/users');
 }

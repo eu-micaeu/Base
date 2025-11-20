@@ -1,17 +1,13 @@
-## Build stage
-FROM golang:1.23 AS builder
-WORKDIR /app
-COPY . .
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go mod download && \
-    go build -o /base-api ./cmd
+FROM golang:1.24-alpine
 
-## Runtime stage
-FROM gcr.io/distroless/base-debian12
-WORKDIR /
-COPY --from=builder /base-api /base-api
-ENV ADDR=:8080
-EXPOSE 8080
-USER nonroot:nonroot
-ENTRYPOINT ["/base-api"]
+WORKDIR /app
+
+RUN apk add --no-cache git && \
+    go install github.com/cosmtrek/air@v1.40.4
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+CMD ["air"]

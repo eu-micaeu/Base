@@ -7,6 +7,7 @@ import (
 
     "github.com/eu-micaeu/Base/backend/go/database"
     "github.com/eu-micaeu/Base/backend/go/models"
+    "github.com/eu-micaeu/Base/backend/go/utils"
     "github.com/gin-gonic/gin"
     "golang.org/x/crypto/bcrypt"
     "go.mongodb.org/mongo-driver/bson"
@@ -177,5 +178,15 @@ func (h *UserHandler) Login(c *gin.Context) {
         c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
         return
     }
-    c.JSON(http.StatusOK, gin.H{"message": "login successful", "user": u})
+    // Gerar token JWT
+    token, err := utils.GenerateJWT(u.ID.Hex(), u.Email)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{
+        "message": "login successful",
+        "user": u,
+        "token": token,
+    })
 }

@@ -26,9 +26,7 @@ func Router(db *database.DB) *gin.Engine {
         MaxAge:           12 * time.Hour,
     }))
 
-    r.GET("/health", func(c *gin.Context) {
-        c.String(200, "ok")
-    })
+    // Health endpoint removido conforme solicitação
 
     uh := handlers.NewUserHandler(db)
 
@@ -44,7 +42,6 @@ func Router(db *database.DB) *gin.Engine {
         // Aplica middleware do pacote middlewares ao grupo /users
         users.Use(middlewares.CORSMiddleware())
         // Suporte a listagem e busca por id sem barra final
-        users.GET("", uh.List)
         users.GET(":id", uh.Get)
         users.POST("", uh.Create)
     }

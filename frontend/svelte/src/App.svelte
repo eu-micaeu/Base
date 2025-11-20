@@ -1,15 +1,12 @@
 <script>
   import { onMount } from 'svelte';
-  import { getHealth, getUsers, registerUser, loginUser, baseUrl } from './lib/api.js';
+  import { getUsers, registerUser, loginUser, baseUrl } from './lib/api.js';
   import Toasts from './lib/Toasts.svelte';
   import { notify } from './lib/toast.js';
   export let apiUrl = baseUrl; // still allow override if parent passes
 
-  let message = 'Pronto para consultar API';
   let users = [];
-  let loadingHealth = false;
   let loadingUsers = false;
-  let errorHealth = '';
   let errorUsers = '';
 
   // Forms
@@ -17,6 +14,8 @@
   let log = { email: '', password: '' };
   let loadingRegister = false;
   let loadingLogin = false;
+  let showRegister = false;
+  let showLogin = false;
 
   async function loadUsers() {
     loadingUsers = true;
@@ -30,17 +29,7 @@
     }
   }
 
-  async function health() {
-    loadingHealth = true;
-    errorHealth = '';
-    try {
-      message = await getHealth();
-    } catch (e) {
-      errorHealth = e.message;
-    } finally {
-      loadingHealth = false;
-    }
-  }
+  // Endpoint /health removido
 
   async function doRegister() {
     loadingRegister = true;
@@ -49,6 +38,7 @@
       notify('Registro concluído!', 'success');
       // opcional: limpar formulário
       reg = { name: '', email: '', password: '' };
+      showRegister = false;
     } catch (e) {
       notify(`Falha no registro: ${e.message}`, 'error');
     } finally {
@@ -60,7 +50,11 @@
     loadingLogin = true;
     try {
       const res = await loginUser(log);
+      if (res.token) {
+        localStorage.setItem('jwt_token', res.token);
+      }
       notify('Login efetuado!', 'success');
+      showLogin = false;
     } catch (e) {
       notify(`Falha no login: ${e.message}`, 'error');
     } finally {
@@ -69,52 +63,51 @@
   }
 
   onMount(() => {
-    // Opcional: verificar saúde automaticamente
-    health();
+    // Inicialização sem verificação de saúde
   });
 </script>
 
 <Toasts position="top-right" />
 <main>
-  <h1>{message}</h1>
-  <p><small>Backend: {apiUrl}</small></p>
   <div class="actions">
-    <button on:click={health} disabled={loadingHealth}>{loadingHealth ? 'Verificando...' : 'Ping API'}</button>
-    <button on:click={loadUsers} disabled={loadingUsers}>{loadingUsers ? 'Carregando...' : 'Carregar Usuários'}</button>
+    <button on:click={() => showRegister = true}>Registrar</button>
+    <button on:click={() => showLogin = true}>Login</button>
   </div>
-  <section class="auth">
-    <div class="card">
-      <h2>Registrar</h2>
-      <form on:submit|preventDefault={doRegister}>
-        <label>Nome <input bind:value={reg.name} placeholder="Seu nome" required /></label>
-        <label>Email <input type="email" bind:value={reg.email} placeholder="voce@exemplo.com" required /></label>
-        <label>Senha <input type="password" bind:value={reg.password} minlength="6" required /></label>
-        <button type="submit" disabled={loadingRegister}>{loadingRegister ? 'Registrando...' : 'Registrar'}</button>
-      </form>
+  {#if showRegister}
+    <div class="modal-overlay" on:click={() => !loadingRegister && (showRegister = false)}>
+      <div class="modal" on:click|stopPropagation>
+        <button class="close" on:click={() => showRegister = false} aria-label="Fechar">×</button>
+        <h2>Registrar</h2>
+        <form on:submit|preventDefault={doRegister}>
+          <label>Nome <input bind:value={reg.name} placeholder="Seu nome" required /></label>
+          <label>Email <input type="email" bind:value={reg.email} placeholder="voce@exemplo.com" required /></label>
+          <label>Senha <input type="password" bind:value={reg.password} minlength="6" required /></label>
+          <div class="form-actions">
+            <button type="submit" disabled={loadingRegister}>{loadingRegister ? 'Registrando...' : 'Registrar'}</button>
+            <button type="button" on:click={() => showRegister = false} disabled={loadingRegister}>Cancelar</button>
+          </div>
+        </form>
+      </div>
     </div>
-    <div class="card">
-      <h2>Login</h2>
-      <form on:submit|preventDefault={doLogin}>
-        <label>Email <input type="email" bind:value={log.email} placeholder="voce@exemplo.com" required /></label>
-        <label>Senha <input type="password" bind:value={log.password} required /></label>
-        <button type="submit" disabled={loadingLogin}>{loadingLogin ? 'Entrando...' : 'Entrar'}</button>
-      </form>
+  {/if}
+  {#if showLogin}
+    <div class="modal-overlay" on:click={() => !loadingLogin && (showLogin = false)}>
+      <div class="modal" on:click|stopPropagation>
+        <button class="close" on:click={() => showLogin = false} aria-label="Fechar">×</button>
+        <h2>Login</h2>
+        <form on:submit|preventDefault={doLogin}>
+          <label>Email <input type="email" bind:value={log.email} placeholder="voce@exemplo.com" required /></label>
+          <label>Senha <input type="password" bind:value={log.password} required /></label>
+          <div class="form-actions">
+            <button type="submit" disabled={loadingLogin}>{loadingLogin ? 'Entrando...' : 'Entrar'}</button>
+            <button type="button" on:click={() => showLogin = false} disabled={loadingLogin}>Cancelar</button>
+          </div>
+        </form>
+      </div>
     </div>
-  </section>
-  {#if errorHealth}
-    <p class="error">Erro saúde: {errorHealth}</p>
   {/if}
   {#if errorUsers}
     <p class="error">Erro usuários: {errorUsers}</p>
-  {/if}
-  {#if users.length}
-    <ul>
-      {#each users as u}
-        <li>{u.name} - {u.email}</li>
-      {/each}
-    </ul>
-  {:else if !loadingUsers && !errorUsers}
-    <p>Nenhum usuário carregado ainda.</p>
   {/if}
 </main>
 
@@ -126,9 +119,13 @@
   body { margin: 0; }
   .error { color: #b00020; font-size: 0.9rem; }
   button[disabled] { opacity: 0.6; cursor: not-allowed; }
-  .auth { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1rem; }
-  .card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; }
   form { display: grid; gap: 0.5rem; }
   label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
   input { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .modal { background: #fff; width: min(400px, 90%); border-radius: 12px; padding: 1.5rem 1.25rem 1.25rem; box-shadow: 0 6px 24px rgba(0,0,0,0.25); position: relative; }
+  .modal h2 { margin-top: 0; }
+  .close { position: absolute; top: 0.5rem; right: 0.75rem; background: transparent; border: none; font-size: 1.25rem; cursor: pointer; }
+  .form-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+  .form-actions button:last-child { background: #666; color: #fff; }
  </style>
