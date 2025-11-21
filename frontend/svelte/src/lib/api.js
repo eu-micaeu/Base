@@ -38,4 +38,11 @@ export async function loginUser(payload) {
     });
 }
 
+// Função para salvar token nos cookies
+export function setTokenCookie(token) {
+    // Expira em 7 dias
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+    document.cookie = `token=${token}; expires=${expires}; path=/`;
+}
+
 export { baseUrl };
