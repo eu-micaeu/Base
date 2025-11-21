@@ -17,6 +17,8 @@ services:
       - MONGO_USERS_COLLECTION=users
     depends_on:
       - database
+    volumes:
+      - ./backend/go:/app
     ports:
       - "8080:8080"
   frontend:

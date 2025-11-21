@@ -1,9 +1,6 @@
 package routes
 
 import (
-    "time"
-
-    "github.com/gin-contrib/cors"
     "github.com/gin-gonic/gin"
 
     "github.com/eu-micaeu/Base/backend/go/database"
